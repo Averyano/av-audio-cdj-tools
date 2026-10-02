@@ -1,0 +1,322 @@
+/* Camelot wheel view (camelot.md). Every class is prefixed cam- so nothing here can collide
+   with the converter. Colours come from the theme tokens in shared/styles/index.css; the only
+   exception is the per-key colours, which view.js computes (keyColor). */
+
+.cam-deck, .cam-wheel-card, .cam-result, .cam-mix, .cam-landings { display: flex; flex-direction: column; gap: 12px; }
+.cam-deck h2, .cam-wheel-card h2, .cam-result h2, .cam-mix h2, .cam-landings h2 { margin: 0; }
+.cam-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.cam-hint { margin: 0; font-size: 12px; color: var(--muted); }
+
+/* Deck: LCD */
+.cam-lcd {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--lcd-bg);
+  color: var(--lcd-ink);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.cam-lcd-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; }
+.cam-lcd-row > span:not([class]) { opacity: 0.75; }
+.cam-lcd-pct { font-size: 30px; font-weight: 600; letter-spacing: -0.03em; }
+.cam-lcd-keys { font-size: 18px; font-weight: 600; }
+
+/* Deck: inputs */
+.cam-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.cam-field { display: grid; gap: 6px; min-width: 0; }
+.cam-field select, .cam-field input {
+  width: 100%;
+  min-width: 0;
+  font: 13px var(--font-mono);
+  background: var(--card-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+.cam-field select:focus-visible, .cam-field input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Deck: range buttons look like the format toggles; pressed = solid onyx */
+.cam-ranges { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.cam-range {
+  font: 600 13px var(--font-sans);
+  padding: 7px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.cam-range:hover { border-color: var(--line-strong); }
+.cam-range[aria-pressed="true"] { background: var(--inverse); border-color: var(--inverse); color: var(--on-inverse); }
+.cam-range:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.toggle.cam-mt { align-self: flex-start; }
+
+/* Deck: fader (minus at the top, like a CDJ). It grows to fill the deck card's bento cell. */
+/* padding-block = half the cap, so the cap never overhangs its neighbours at full travel */
+.cam-faderbay { flex: 1; min-height: 336px; padding-block: 18px; display: grid; grid-template-columns: minmax(0, 1fr) 70px minmax(0, 1fr); gap: 8px; }
+.cam-scale { position: relative; font: 11px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.cam-scale span { position: absolute; right: 0; transform: translateY(-50%); white-space: nowrap; }
+.cam-scale.right span { left: 0; right: auto; }
+.cam-fader { position: relative; cursor: ns-resize; touch-action: none; border-radius: 8px; }
+.cam-fader:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.cam-ticks { position: absolute; inset: 0; pointer-events: none; }
+.cam-ticks i { position: absolute; left: 14px; right: 14px; height: 1px; background: var(--line); }
+.cam-track, .cam-fill { position: absolute; left: 50%; width: 8px; transform: translateX(-50%); border-radius: 4px; }
+.cam-track { top: 0; bottom: 0; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--line); }
+.cam-fill { background: var(--primary); }
+.cam-detent { position: absolute; left: 8px; right: 8px; top: 50%; height: 2px; margin-top: -1px; background: var(--line-strong); }
+.cam-cap {
+  position: absolute;
+  left: 50%;
+  width: 60px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  background: var(--inverse);
+  border-radius: 6px;
+}
+.cam-cap::after { content: ''; position: absolute; left: 8px; right: 8px; top: 50%; height: 2px; margin-top: -1px; background: var(--primary); }
+.cam-nudge { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 6px; }
+
+/* Wheel */
+.cam-wheel { display: block; width: 100%; max-width: 440px; height: auto; margin: 0 auto; }
+.cam-seg { cursor: pointer; outline: none; }
+.cam-seg path { stroke: var(--card); stroke-width: 2; transition: opacity 0.2s; }
+.cam-seg text { font-family: var(--font-sans); font-weight: 700; fill: var(--key-ink); pointer-events: none; }
+.cam-seg .sub { font-weight: 600; font-size: 10px; opacity: 0.75; }
+.cam-seg.dim path { opacity: 0.3; }
+.cam-seg.dim text { fill: var(--text); opacity: 0.5; }
+.cam-seg.compat path { opacity: 0.65; }
+.cam-seg.orig path { opacity: 0.8; stroke: var(--text); stroke-width: 3; stroke-dasharray: 5 4; }
+.cam-seg.res path { stroke: var(--text); stroke-width: 3; }
+.cam-seg:focus-visible path { stroke: var(--focus); stroke-width: 4; stroke-dasharray: none; }
+.cam-hub { fill: var(--card); stroke: var(--line); }
+.cam-hubtext { fill: var(--text); font-family: var(--font-sans); text-anchor: middle; }
+.cam-hubtext.small { fill: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; }
+.cam-hubtext.big { font-size: 34px; font-weight: 700; letter-spacing: -1px; }
+.cam-arrow-path { fill: none; stroke: var(--text); stroke-width: 2.5; stroke-linecap: round; }
+.cam-arrowhead { fill: var(--text); }
+.cam-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.cam-legend b { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border: 2px solid var(--text); border-radius: 3px; }
+.cam-legend .orig { border-style: dashed; }
+.cam-legend .res { background: var(--text); }
+.cam-legend .compat { border-color: var(--line-strong); }
+
+/* Result */
+.cam-fromto { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cam-chip { min-width: 72px; padding: 8px 12px; border-radius: 10px; font: 700 30px/1 var(--font-sans); letter-spacing: -0.02em; text-align: center; color: var(--key-ink); }
+.cam-chip.ghost { min-width: 60px; padding: 6px 10px; border: 2px dashed var(--line-strong); font-size: 24px; color: var(--text); }
+.cam-arrow { color: var(--muted); font-size: 20px; }
+.cam-names { margin: 0; color: var(--muted); }
+.cam-names strong { color: var(--text); font-weight: 600; }
+.cam-status { font-weight: 600; } /* tones come from the shared .callout */
+.cam-stats { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; }
+.cam-stats dt { color: var(--muted); }
+.cam-stats dd { margin: 0; text-align: right; font: 13px var(--font-mono); font-variant-numeric: tabular-nums; }
+/* Cents meter: zones match the verdict (≤ 10 ok, ≤ 25 warn, beyond bad) */
+.cam-meter {
+  --zone-ok: color-mix(in srgb, var(--ok) 35%, var(--card-2));
+  --zone-warn: color-mix(in srgb, var(--warn) 40%, var(--card-2));
+  --zone-bad: color-mix(in srgb, var(--danger) 30%, var(--card-2));
+  display: grid;
+  gap: 6px;
+}
+.cam-meterbar {
+  position: relative;
+  height: 18px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--zone-bad) 0 25%, var(--zone-warn) 25% 40%, var(--zone-ok) 40% 60%, var(--zone-warn) 60% 75%, var(--zone-bad) 75% 100%);
+}
+.cam-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--text) 30%, transparent); }
+.cam-needle { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--text); transition: left 0.12s; }
+.cam-meterscale { display: flex; justify-content: space-between; font: 11px var(--font-mono); color: var(--muted); }
+
+/* Pitch ruler: scrolls inside its own box, never widens the page */
+.cam-ruler .card-head { flex-wrap: wrap; }
+.cam-ruler-scroll { overflow-x: auto; padding-bottom: 4px; }
+.cam-piano { position: relative; display: grid; grid-template-columns: repeat(25, minmax(26px, 1fr)); min-width: 650px; height: 92px; padding-top: 20px; }
+.cam-pk {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 5px;
+  border: 1px solid var(--card);
+  border-radius: 0 0 4px 4px;
+  background: var(--piano-white);
+  color: var(--key-ink);
+  font: 600 11px var(--font-mono);
+}
+.cam-pk.black { background: var(--piano-black); color: var(--piano-white); }
+.cam-pk.root { box-shadow: inset 0 0 0 2px var(--muted); }
+.cam-pk-st { position: absolute; top: -18px; font-size: 10px; color: var(--muted); }
+/* difference blend keeps the dashed root line visible on white and black keys alike */
+.cam-omarker { position: absolute; top: 18px; bottom: 0; left: 50%; margin-left: -1px; border-left: 2px dashed var(--piano-white); mix-blend-mode: difference; }
+.cam-pmarker { position: absolute; top: 14px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--primary); transition: left 0.12s; }
+.cam-pmarker::before { content: ''; position: absolute; top: -6px; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--primary); }
+
+/* Mixing: key chips are solid key-colour blocks with onyx text */
+.cam-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cam-key {
+  min-width: 48px;
+  padding: 6px 9px 5px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font: 700 15px/1 var(--font-sans);
+  text-align: center;
+  color: var(--key-ink);
+  cursor: pointer;
+}
+.cam-key small { display: block; margin-top: 3px; font: 600 10px var(--font-sans); opacity: 0.75; }
+.cam-key.shift { border-style: dashed; border-color: var(--key-ink); }
+.cam-key:hover { border-color: var(--key-ink); }
+.cam-key:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.cam-chart-title { margin-top: 4px !important; }
+.cam-chart { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.cam-chart-row { display: grid; grid-template-columns: 136px minmax(0, 1fr); align-items: center; gap: 10px; padding: 8px 10px; }
+.cam-chart-row + .cam-chart-row { border-top: 1px solid var(--line); }
+.cam-chart-name { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.cam-chart-name em { display: block; margin-top: 2px; font-size: 12px; font-style: normal; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.cam-sym { margin-left: 4px; font-family: var(--font-mono); }
+
+/* Exact landings */
+.cam-table { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+.cam-table table { width: 100%; border-collapse: collapse; }
+.cam-table th {
+  position: sticky;
+  top: 0;
+  padding: 8px 12px;
+  background: var(--card-2);
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cam-table td { padding: 7px 12px; border-top: 1px solid var(--line); font: 13px var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cam-table tbody tr { cursor: pointer; }
+.cam-table tbody tr:hover { background: var(--card-2); }
+.cam-table tbody tr.on { background: color-mix(in srgb, var(--secondary) 30%, transparent); }
+.cam-table tbody tr:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.cam-dot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; }
+
+/* How the maths works */
+.cam-notes ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
+.cam-notes code { padding: 1px 4px; border-radius: 4px; background: var(--card-2); font: 12px var(--font-mono); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cam-seg path, .cam-needle, .cam-pmarker { transition: none; }
+}
+
+/* Listen: live spectrogram while capturing, then tempo / key / tuning (camelot.md → Listen) */
+.cam-listen { display: flex; flex-direction: column; gap: 12px; }
+.cam-listen .card-head h2 { margin: 0; }
+.cam-listen-tools { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cam-listen-input { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cam-listen-input select {
+  max-width: 260px;
+  min-width: 0;
+  font: 13px var(--font-mono);
+  background: var(--card-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 8px;
+}
+.cam-listen-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.cam-listen-body > .callout { grid-column: 2; }
+.cam-listen-scope { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+#cam-listen-canvas { display: block; width: 100%; height: 180px; border-radius: 8px; background: var(--spectro-low); }
+.cam-listen-axis { display: flex; flex-direction: column; justify-content: space-between; font: 11px var(--font-mono); color: var(--muted); }
+.cam-listen-overlay {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--lcd-bg);
+  color: var(--lcd-ink);
+  font: 12px var(--font-mono);
+}
+.cam-listen-count { font-size: 24px; font-weight: 600; }
+.cam-listen-level { width: 120px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--lcd-ink) 25%, transparent); overflow: hidden; }
+.cam-listen-level i { display: block; height: 100%; width: 0; background: var(--lcd-ink); }
+.cam-listen-quiet { color: var(--on-inverse); }
+.cam-listen-result { display: flex; flex-direction: column; gap: 12px; }
+.cam-listen-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.cam-listen-stat { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cam-listen-big { font: 600 26px/1.1 var(--font-mono); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cam-listen-big small { font-size: 12px; letter-spacing: 0; color: var(--muted); }
+.cam-listen-note { font-size: 12px; color: var(--muted); }
+.cam-listen-note .link { margin-left: 6px; }
+.cam-listen-keyrow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cam-listen-keyrow .cam-chip { min-width: 0; padding: 4px 8px; font-size: 22px; }
+/* Chroma: one bar per pitch class, the detected tonic in its key colour */
+.cam-chroma { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; height: 90px; }
+.cam-chroma span { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }
+.cam-chroma i { display: block; width: 100%; border-radius: 4px 4px 0 0; background: var(--line-strong); }
+.cam-chroma b { font: 600 10px var(--font-mono); color: var(--muted); }
+.cam-chroma .tonic b { color: var(--text); }
+.cam-listen-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+@media (max-width: 856px) {
+  .cam-listen-body { grid-template-columns: minmax(0, 1fr); }
+  .cam-listen-body > .callout { grid-column: auto; }
+}
+
+/* Wide screens (≥ 1440px window, a maximized 13–14" laptop): use the empty side columns.
+   Three content columns plus the wheel, pinned on the right so it stays in view while scrolling.
+   Narrower windows keep the 4-column bento above (camelot.md → UI). */
+@media (min-width: 1440px) {
+  .shell.cam-shell {
+    max-width: 1600px;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(300px, 360px);
+    grid-template-areas:
+      "head   head   head   head"
+      "listen listen listen wheel"
+      "deck   mix    result wheel"
+      "deck   mix    land   wheel"
+      "ruler  ruler  ruler  wheel"
+      "notes  notes  notes  wheel";
+  }
+  /* Listen closed: drop its row, or its empty track would leave a double gap. */
+  .shell.cam-shell:has(> .cam-listen[hidden]) {
+    grid-template-areas:
+      "head   head   head   head"
+      "deck   mix    result wheel"
+      "deck   mix    land   wheel"
+      "ruler  ruler  ruler  wheel"
+      "notes  notes  notes  wheel";
+  }
+  .cam-shell > .top { grid-area: head; }
+  .cam-shell > .cam-listen { grid-area: listen; }
+  .cam-shell > .cam-deck { grid-area: deck; }
+  .cam-shell > .cam-mix { grid-area: mix; }
+  .cam-shell > .cam-result { grid-area: result; }
+  .cam-shell > .cam-landings { grid-area: land; }
+  .cam-shell > .cam-ruler { grid-area: ruler; }
+  .cam-shell > .cam-notes { grid-area: notes; }
+  .cam-shell > .cam-wheel-card { grid-area: wheel; align-self: start; position: sticky; top: 16px; }
+  /* Narrower columns than the bento: tighter chart labels and table cells. */
+  .cam-chart-row { grid-template-columns: 104px minmax(0, 1fr); gap: 8px; }
+  .cam-table th, .cam-table td { padding-inline: 8px; }
+  .cam-table td { font-size: 12px; }
+  .cam-land-name { display: none; } /* key name stays in the cell's tooltip */
+}
+
+/* Target (camelot.md → Target): a clicked key the track is heading for */
+.cam-target { display: flex; flex-direction: column; gap: 10px; }
+.cam-reach { display: flex; flex-direction: column; gap: 6px; }
+.cam-reach-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.cam-reach-options .btn { font-family: var(--font-mono); font-weight: 600; }
+.cam-reach-options .btn.current { background: var(--inverse); border-color: var(--inverse); color: var(--on-inverse); }
+.cam-target-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cam-key.target { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--primary); }
+.cam-seg.target path { stroke: var(--primary); stroke-width: 4; stroke-dasharray: none; opacity: 1; }
+.cam-legend .target { border-color: var(--primary); }

@@ -1,0 +1,577 @@
+/* Fonts are declared in fonts.css (files live in ../fonts/). To change the
+   UI typeface, edit --font-sans / --font-mono below. */
+@import url('fonts.css');
+
+/* Colour is three layers (ui.md → Visual system):
+   1. Palette: raw colours. Components never use these directly.
+   2. Theme: semantic tokens (--bg, --text, …) mapped onto the palette. Night mode
+      will be a second block that remaps the same tokens.
+   3. Accent scheme: which colour pair drives the CTAs. */
+
+/* 1. Palette */
+:root {
+  /* Concrete: warm-neutral greys. Day surfaces; night text. */
+  --concrete-50: #e6e6e3;
+  --concrete-100: #dcdcd9;
+  --concrete-200: #d4d4d1;
+  --concrete-300: #c9c9c6;
+  --concrete-400: #bdbdba;
+  --concrete-500: #a6a6a3;
+  --concrete-600: #8a8a87;
+  /* Onyx: soft blacks, never #000. Day text; night surfaces. */
+  --onyx-500: #4b4d4f;
+  --onyx-700: #2c2e30;
+  --onyx-800: #222324;
+  --onyx-900: #1a1b1c;
+  --onyx-950: #111213;
+  /* Accents. The -500s are the brand values; -600 = hover / AA-safe fill, -700 = text on concrete. */
+  --red-500: #ed2540;
+  --red-600: #d01c36;
+  --red-700: #a3112a;
+  --amber-500: #faa819;
+  --amber-600: #e3940f;
+  --blue-500: #3a83c4;
+  --blue-600: #2f6fa9;
+  --teal-500: #3ec1c8;
+  --teal-600: #2ea8af;
+  --green-500: #2fb36b;
+  --white: #ffffff;
+}
+
+/* 2. Theme: day (the only one for now). Keep src/main/main.js backgroundColor = --bg. */
+:root {
+  color-scheme: light;
+  --bg: var(--concrete-300);          /* window */
+  --card: var(--concrete-200);        /* cards, footer bar */
+  --card-2: var(--concrete-400);      /* inset: paths, tiles, notes, inputs, progress track */
+  --line: var(--concrete-500);        /* borders, dividers */
+  --line-strong: var(--concrete-600); /* hover borders */
+  --text: var(--onyx-900);
+  --muted: var(--onyx-500);
+  --inverse: var(--onyx-900);         /* solid dark fill: selected toggle */
+  --on-inverse: var(--concrete-100);
+  --focus: var(--onyx-900);
+  --logo: var(--onyx-900);
+  --danger: var(--red-600);           /* fills, stripes, borders */
+  --on-danger: var(--white);
+  --danger-text: var(--red-700);      /* red text on concrete */
+  --warn: var(--amber-500);
+  --ok: var(--green-500);
+  --found-bg: color-mix(in srgb, var(--ok) 18%, transparent);
+  --missing-bg: color-mix(in srgb, var(--warn) 22%, transparent);
+  --lcd-bg: var(--onyx-950);          /* CDJ-style display (Camelot deck); stays dark in every theme */
+  --lcd-ink: var(--secondary);
+  --key-ink: var(--onyx-900);         /* text on key-coloured fills (Camelot); the same in every theme */
+  --piano-white: var(--concrete-50);  /* pitch ruler keys: physical colours, the same in every theme */
+  --piano-black: var(--onyx-800);
+  --spectro-low: var(--onyx-950);     /* spectrogram: silence → loud, one neutral sequential ramp */
+  --spectro-high: var(--concrete-50);
+  --series-a: var(--blue-600);        /* chart series: fixed per entity (track A / B), validated pair */
+  --series-b: var(--red-600);
+}
+/* Night (not built yet): reassign the same tokens, never touch components. Sketch:
+   :root[data-theme="night"] {
+     color-scheme: dark;
+     --bg: var(--onyx-950); --card: var(--onyx-900); --card-2: var(--onyx-800);
+     --line: var(--onyx-700); --line-strong: var(--onyx-500);
+     --text: var(--concrete-100); --muted: var(--concrete-600);
+     --inverse: var(--concrete-100); --on-inverse: var(--onyx-900);
+     --focus: var(--concrete-100); --logo: var(--concrete-100);
+     --danger-text: <a lighter red>;
+   } */
+
+/* 3. Accent scheme: red/amber by default; <html data-accent="blue"> switches to blue/teal.
+   Accents are fills (buttons, tiles, progress), not text: on concrete they're too light to read. */
+:root {
+  --primary: var(--red-500);
+  --primary-hover: var(--red-600);
+  --on-primary: var(--white);
+  --secondary: var(--amber-500);
+  --secondary-hover: var(--amber-600);
+  --on-secondary: var(--onyx-900);
+}
+:root[data-accent="blue"] {
+  --primary: var(--blue-500);
+  --primary-hover: var(--blue-600);
+  --on-primary: var(--white);
+  --secondary: var(--teal-500);
+  --secondary-hover: var(--teal-600);
+  --on-secondary: var(--onyx-900);
+}
+
+/* Shape & type */
+:root {
+  --radius: 12px;
+  --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
+  font: 14px/1.45 var(--font-sans);
+}
+
+* { box-sizing: border-box; }
+/* `hidden` must always win, even over components that set their own display (flex/grid). */
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+::selection { background: var(--secondary); color: var(--on-secondary); }
+body {
+  background: var(--bg);
+  color: var(--text);
+  display: flex; /* rail | view */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Navigation rail: logo on top, one square item per view, Settings + Contact pinned to the bottom. */
+.rail {
+  --rail-w: 96px;
+  --rail-pad: 24px;
+  --rail-gap: 4px;
+  --rail-icon: 18px;
+  flex: none;
+  width: var(--rail-w);
+  display: flex;
+  flex-direction: column;
+  gap: var(--rail-gap);
+  padding: var(--rail-pad);
+  background: var(--card);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+.rail-item {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.rail-item .glyph { width: var(--rail-icon); height: var(--rail-icon); }
+.rail-item:hover { background: var(--card-2); color: var(--text); }
+.rail-item[aria-current="page"] { background: var(--inverse); color: var(--on-inverse); }
+.rail-item:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.rail-end { margin-top: auto; }
+/* LED on the converter item while a scan or convert runs, so it's visible from other views. */
+.rail-item.busy::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes pulse { to { opacity: 0.3; } }
+/* Green dot on Settings while a newer version is out (settings/updates.js). */
+.rail-item.has-update::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+/* One view per rail item; only the active one is shown (app.js → showView). */
+.view { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* Bento grid: 4 columns. Children span the full row unless marked .span-2. */
+.shell {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 28px 16px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: start;
+  gap: 14px;
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+}
+.shell > * { grid-column: 1 / -1; }
+.shell > .span-2 { grid-column: span 2; }
+.shell > .row-2 { grid-row: span 2; } /* tall card beside two stacked ones */
+
+.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
+/* Logo (top of the rail): the SVG is used as a mask so its colour comes from --logo, not the file.
+   The artwork only fills part of its 20×20 viewBox (x 6.36, y 8.53, w 7.32, h 2.94),
+   so the mask is scaled and offset to crop to the artwork: the element's box is the
+   visible mark, and margins give the real breathing room. Change --logo-w to resize. */
+.logo {
+  --logo-w: 40px;
+  --k: calc(var(--logo-w) / 7.32);
+  --logo-h: calc(var(--k) * 2.94);
+  --logo-space: calc((var(--rail-w) - var(--logo-h)) / 2); /* centres the mark in a rail-wide square */
+  flex: none;
+  display: block;
+  width: var(--logo-w);
+  height: var(--logo-h);
+  margin: calc(var(--logo-space) - var(--rail-pad)) auto calc(var(--logo-space) - var(--rail-gap));
+  background: var(--logo);
+  mask-image: url('../images/av-logo-2026.svg');
+  mask-repeat: no-repeat;
+  mask-size: calc(var(--k) * 20) calc(var(--k) * 20);
+  mask-position: calc(var(--k) * -6.36) calc(var(--k) * -8.53);
+}
+h1 { font-size: 22px; letter-spacing: -0.02em; margin: 0; }
+.sub { margin: 2px 0 0; color: var(--muted); }
+h2 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.chip {
+  font: 12px var(--font-mono);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+.chip.bad { color: var(--danger-text); border-color: var(--danger); }
+.top > .chip { margin-top: 5px; } /* centred on the h1 line */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.folder-row {
+  display: grid;
+  grid-template-columns: 80px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+.folder-row + .folder-row { border-top: 1px solid var(--line); }
+.folder-label { color: var(--muted); }
+.path {
+  font: 13px var(--font-mono);
+  background: var(--card-2);
+  border-radius: 8px;
+  padding: 7px 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl; /* keep the end of long paths visible */
+  text-align: left;
+}
+.path span { direction: ltr; unicode-bidi: embed; }
+.path.placeholder { color: var(--muted); }
+.path.locked { opacity: 0.5; } /* shown for information only, not editable */
+
+.toggles { display: flex; gap: 8px; flex-wrap: wrap; }
+.toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+}
+.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.toggle::before {
+  content: '';
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+}
+/* Checked = solid onyx pill with the dot lit in the primary colour, like a hardware LED. */
+.toggle:has(input:checked) { background: var(--inverse); border-color: var(--inverse); color: var(--on-inverse); }
+.toggle:has(input:checked)::before { background: var(--primary); border-color: var(--primary); }
+.toggle:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.toggle:has(input:disabled), .switch:has(input:disabled), .stepper:has(input:disabled) { opacity: 0.45; cursor: default; }
+
+.switch, .stepper { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+/* On/off switch: a checkbox with role="switch". Off = inset track, on = solid onyx with a lit knob. */
+.switch-control {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 22px;
+  margin: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--card-2);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.switch-control::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s, background 0.15s;
+}
+.switch-control:checked { background: var(--inverse); border-color: var(--inverse); }
+.switch-control:checked::before { transform: translateX(18px); background: var(--primary); }
+.switch-control:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.switch-control:disabled { opacity: 0.45; cursor: default; }
+/* Segmented choice: radio inputs drawn as pills; the picked one is solid onyx. */
+.segmented { display: inline-flex; flex: none; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--card-2); }
+.segmented label { position: relative; padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 13px; cursor: pointer; }
+.segmented input { position: absolute; opacity: 0; pointer-events: none; }
+.segmented label:has(input:checked) { background: var(--inverse); color: var(--on-inverse); }
+.segmented label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.switch input { accent-color: var(--inverse); width: 16px; height: 16px; }
+.stepper { justify-content: space-between; max-width: 300px; }
+.stepper input {
+  width: 64px;
+  font: 13px var(--font-mono);
+  background: var(--card-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 8px;
+}
+
+.stats-head, .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.stat {
+  background: var(--card-2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat .num { font: 600 26px/1.1 var(--font-mono); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.stat .lbl { color: var(--muted); font-size: 12px; }
+/* Highlighted tiles are solid blocks; coloured numbers would be unreadable on concrete. */
+.stat.accent { background: var(--secondary); }
+.stat.bad { background: var(--danger); }
+.stat.accent .num, .stat.accent .lbl { color: var(--on-secondary); }
+.stat.bad .num, .stat.bad .lbl { color: var(--on-danger); }
+.detail { margin: 12px 0 0; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+
+details.note {
+  margin-top: 10px;
+  border-left: 3px solid var(--warn);
+  background: var(--card-2);
+  border-radius: 0 8px 8px 0;
+  padding: 8px 12px;
+}
+details.note.error { border-left-color: var(--danger); }
+/* App-wide error (app.js → showAppError): an unexpected error, shown instead of a blocking dialog. */
+.app-error {
+  position: fixed;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: min(520px, calc(100vw - 136px));
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--inverse) 25%, transparent);
+}
+/* Opaque: it floats over content (the plain .callout.bad tint is see-through). */
+.app-error.callout.bad { background: color-mix(in srgb, var(--danger) 14%, var(--card)); }
+.app-error .btn { flex: none; }
+/* Callout: a verdict or status line with a coloured stripe, the same language as details.note. */
+.callout { margin: 0; padding: 8px 12px; border-left: 3px solid var(--line-strong); border-radius: 0 8px 8px 0; background: var(--card-2); }
+.callout.ok { border-color: var(--ok); background: var(--found-bg); }
+.callout.warn { border-color: var(--warn); background: var(--missing-bg); }
+.callout.bad { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.callout.info { border-color: var(--inverse); background: var(--card-2); }
+details.note summary { cursor: pointer; }
+details.note ul { margin: 8px 0 2px; padding-left: 18px; font: 12px/1.6 var(--font-mono); color: var(--muted); max-height: 180px; overflow-y: auto; }
+details.note li { word-break: break-all; }
+details.note li button { margin-left: 8px; }
+.link {
+  background: none;
+  border: 0;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.link:hover { text-decoration-thickness: 2px; }
+.link:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.bar {
+  border-top: 1px solid var(--line);
+  background: var(--card);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.progress-wrap { flex: 1; min-width: 0; }
+.progress { height: 6px; background: var(--card-2); border-radius: 999px; overflow: hidden; margin-bottom: 8px; }
+.progress .fill { height: 100%; width: 0; background: var(--primary); transition: width 0.2s ease; }
+.progress.indeterminate .fill { width: 30%; animation: slide 1.2s ease-in-out infinite; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) {
+  .progress.indeterminate .fill { animation: none; width: 100%; opacity: 0.4; }
+  .switch-control, .switch-control::before { transition: none; }
+  .rail-item.busy::after { animation: none; }
+}
+.status { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status.small { margin-top: 2px; font-family: var(--font-mono); }
+
+.actions { display: flex; gap: 8px; }
+.btn {
+  font: 600 13px var(--font-sans);
+  color: var(--text);
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) { border-color: var(--line-strong); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.btn.primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+.btn.secondary { background: var(--secondary); border-color: var(--secondary); color: var(--on-secondary); }
+.btn.secondary:hover:not(:disabled) { background: var(--secondary-hover); border-color: var(--secondary-hover); }
+.btn.danger { color: var(--danger-text); border-color: var(--danger); background: transparent; }
+.btn.ghost { background: transparent; }
+.btn.icon { padding: 8px 10px; }
+
+/* Playlist card */
+.pl-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.pl-status { margin: 12px 0 0; color: var(--muted); }
+.pl-status.error { color: var(--danger-text); }
+.pl-find { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 14px; }
+.pl-find-row { display: flex; gap: 8px; }
+.btn.with-glyph { display: inline-flex; align-items: center; gap: 8px; }
+.hint { margin: 0; padding-left: 26px; font-size: 12px; color: var(--muted); } /* 26px = checkbox + gap */
+.pl-table { margin-top: 14px; }
+.pl-rows { display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow-y: auto; }
+.pl-row {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) minmax(0, 1fr) 2rem;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  min-height: 34px;
+}
+.pl-row.found { background: var(--found-bg); }
+.pl-row.missing { background: var(--missing-bg); }
+.pl-head { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; min-height: 0; padding-block: 0 6px; }
+.pl-num { color: var(--muted); font: 12px var(--font-mono); font-variant-numeric: tabular-nums; }
+.pl-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pl-reason { color: var(--muted); font-style: italic; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pl-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tag {
+  flex: none;
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 7px;
+}
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+}
+.icon-btn:hover { border-color: var(--line-strong); }
+.icon-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* Glyphs: single-colour SVGs from ../images/icons/ used as masks, so they take the
+   text colour. (Not .icon — that's the square-button modifier .btn.icon.) */
+.glyph { display: block; width: 15px; height: 15px; background: currentColor; mask: center / contain no-repeat; }
+.glyph-folder { mask-image: url('../images/icons/folder.svg'); }
+.glyph-wave { mask-image: url('../images/icons/wave.svg'); }
+.glyph-wheel { mask-image: url('../images/icons/wheel.svg'); }
+.glyph-mail { mask-image: url('../images/icons/mail.svg'); }
+.glyph-cog { mask-image: url('../images/icons/cog.svg'); }
+.glyph-mic { mask-image: url('../images/icons/mic.svg'); }
+.pl-save { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.pl-prefix { display: flex; align-items: center; gap: 10px; }
+.pl-prefix input {
+  width: 90px;
+  font: 13px var(--font-mono);
+  background: var(--card-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 8px;
+}
+.pl-save-name { flex: 1; min-width: 0; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* Placeholder for views that aren't built yet */
+.card.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 260px;
+  text-align: center;
+  color: var(--muted);
+}
+.card.empty .glyph { width: 48px; height: 48px; }
+.card.empty p { margin: 0; max-width: 42ch; }
+.contact .contact-email { font-size: 20px; font-weight: 600; color: var(--text); user-select: text; }
+.nowrap { white-space: nowrap; }
+.ffmpeg-missing { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.contact .contact-note { font-size: 12px; }
+
+@media (max-width: 856px) { /* 760px of content + the 96px rail */
+  .shell > .span-2 { grid-column: 1 / -1; }
+  .shell > .row-2 { grid-row: auto; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .folder-row { grid-template-columns: 72px 1fr auto; }
+  .folder-row .icon { display: none; }
+}
+
+/* Modal dialogs (dom.js → showDialog): "Update available" and "ffmpeg is needed". */
+.dialog {
+  width: min(560px, calc(100vw - 48px));
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+}
+.dialog::backdrop { background: color-mix(in srgb, var(--onyx-950) 45%, transparent); }
+.dialog p { margin: 0; }
+.dialog-title { margin: 0 0 6px; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; text-transform: none; color: var(--text); }
+.dialog-sub { color: var(--muted); }
+.dialog .dialog-meta { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.dialog-notes { margin: 16px 0 0; padding: 12px 16px 12px 34px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--card-2); }
+.dialog-notes li + li { margin-top: 6px; }
+.dialog .dialog-tip { margin-top: 14px; padding: 10px 12px; border-radius: 8px; background: var(--card-2); }
+.dialog-tip code { font: 12px var(--font-mono); }
+.dialog .setting-error { display: block; margin-top: 10px; }
+.dialog-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.dialog-actions .spacer { flex: 1; }
+.update-dot { display: inline-block; width: 8px; height: 8px; margin-left: 8px; border-radius: 50%; background: var(--ok); vertical-align: 1px; }

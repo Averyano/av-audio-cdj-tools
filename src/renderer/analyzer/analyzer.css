@@ -1,0 +1,108 @@
+/* Audio analyzer view (analyzer.md). Every class is prefixed an- so nothing here collides with
+   the other views. Colours come from theme tokens: --spectro-* for the spectrogram ramp,
+   --series-a/-b for the two tracks. */
+
+.an-slot { display: flex; flex-direction: column; gap: 12px; }
+.an-slot.an-dragover { outline: 2px dashed var(--text); outline-offset: -6px; }
+.an-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.an-head h2 { display: flex; align-items: center; gap: 6px; margin: 0; flex: none; }
+.an-name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; }
+.an-actions { display: flex; gap: 8px; flex: none; }
+.an-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.an-swatch.a { background: var(--series-a); }
+.an-swatch.b { background: var(--series-b); }
+
+/* Empty / busy: a big drop area */
+.an-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 200px;
+  padding: 24px;
+  border: 2px dashed var(--line-strong);
+  border-radius: 10px;
+  text-align: center;
+  color: var(--muted);
+}
+.an-drop .glyph { width: 32px; height: 32px; margin-bottom: 6px; }
+.an-drop-title { margin: 0; font-size: 16px; font-weight: 600; color: var(--text); }
+.an-drop-sub { margin: 0; font-size: 12px; }
+.an-progress { width: min(320px, 100%); margin-top: 10px; }
+.an-progress .progress { margin-bottom: 6px; }
+.an-progress-text { margin: 0; font: 12px var(--font-mono); }
+
+/* Result */
+.an-facts { display: flex; flex-wrap: wrap; gap: 6px; }
+.an-fact { padding: 3px 9px; border-radius: 999px; background: var(--card-2); font: 12px var(--font-mono); }
+/* Space around the verdict so it reads as the headline, a little more below it. */
+.an-verdict { margin: 12px 0 20px; }
+.an-verdict strong { display: block; }
+.an-notes { margin: 4px 0 0; padding-left: 18px; }
+.an-notes:empty { display: none; }
+
+/* Tempo · key estimate · tuning: filled in a few seconds after the spectrogram. Matches Listen's stats. */
+.an-tk { margin: -8px 0 20px; }
+.an-tk-busy { margin: 0; font-size: 12px; color: var(--muted); }
+.an-tk-error { margin: 0; }
+.an-tk-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: center; gap: 10px 16px; }
+.an-tk-stat { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.an-tk-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.an-tk-big { font: 600 22px/1.1 var(--font-mono); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.an-tk-big small { font-size: 12px; letter-spacing: 0; color: var(--muted); }
+.an-tk-note { font-size: 12px; color: var(--muted); }
+.an-tk-keyrow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.an-key-chip { padding: 3px 8px; border-radius: 8px; font: 700 20px/1 var(--font-sans); letter-spacing: -0.02em; color: var(--key-ink); background: var(--line); }
+.an-key-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 856px) {
+  .an-tk-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .an-tk-stats .an-use { grid-column: 1 / -1; justify-self: start; }
+}
+
+/* Spectrogram: y axis | canvas, then the time axis under the canvas */
+.an-plot { display: grid; grid-template-columns: 44px minmax(0, 1fr); grid-template-rows: auto 22px; column-gap: 8px; }
+.an-yaxis, .an-xaxis { position: relative; font: 11px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.an-yaxis span { position: absolute; right: 0; transform: translateY(-50%); }
+.an-unit { padding-top: 4px; text-align: right; font: 11px var(--font-mono); color: var(--muted); }
+.an-xaxis span { position: absolute; top: 4px; transform: translateX(-50%); white-space: nowrap; }
+.an-xaxis span:first-child { transform: none; }
+.an-canvas-wrap { position: relative; height: 280px; border-radius: 6px; overflow: hidden; cursor: crosshair; }
+.an-canvas { display: block; width: 100%; height: 100%; }
+/* Horizontal markers: cutoff (primary, a fill with on-primary text) and the file's own limit */
+.an-line { position: absolute; left: 0; right: 0; border-top: 2px dashed; pointer-events: none; }
+.an-line span { position: absolute; right: 6px; transform: translateY(-50%); padding: 2px 7px; border-radius: 999px; font: 600 11px var(--font-sans); white-space: nowrap; }
+.an-cutoff { border-color: var(--primary); }
+.an-cutoff span { background: var(--primary); color: var(--on-primary); }
+.an-nyq { border-top-style: solid; border-color: var(--line-strong); }
+.an-nyq span { right: auto; left: 6px; background: var(--card); color: var(--text); }
+.an-tip {
+  position: absolute;
+  z-index: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--inverse);
+  color: var(--on-inverse);
+  font: 12px var(--font-mono);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.an-scale { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font: 11px var(--font-mono); color: var(--muted); }
+.an-scale i { width: 140px; height: 8px; border-radius: 4px; } /* gradient set from the colour scale in view.js */
+
+/* Average spectrum chart */
+.an-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; margin-bottom: 6px; }
+.an-legend span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.an-legend em { font-style: normal; color: var(--muted); }
+.an-chart { position: relative; }
+.an-chart svg { display: block; }
+.an-grid { stroke: var(--line); stroke-width: 1; }
+.an-tick { fill: var(--muted); font: 11px var(--font-mono); }
+.an-series { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.an-cut { stroke-width: 1; stroke-dasharray: 4 4; }
+.an-cross { stroke: var(--text); stroke-width: 1; }
+.an-hit { fill: transparent; cursor: crosshair; }
+.an-chart .an-tip { top: 8px; display: grid; gap: 2px; }
+.an-chart .an-tip span { display: inline-flex; align-items: center; gap: 6px; }
+
+.an-help ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }

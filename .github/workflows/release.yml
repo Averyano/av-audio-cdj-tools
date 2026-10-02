@@ -1,0 +1,62 @@
+# Builds the installers for every OS into a draft GitHub release when a version tag is pushed:
+#   npm version patch|minor|major   (bumps package.json, commits, tags vX.Y.Z)
+#   git push --follow-tags
+# Then write the notes on the draft and publish it. The app's update check only sees published
+# releases (docs/desktop-app.md → Releases).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the draft release and upload to it
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches package.json
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          if [ "$v" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match package.json ($v). Use npm version to make both."
+            exit 1
+          fi
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="AudioConverter $GITHUB_REF_NAME"
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "$title" --notes-file .github/release-notes.md
+
+  build:
+    needs: draft
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest # Apple Silicon runner; builds the arm64 and x64 .dmg
+            target: --mac
+          - os: windows-latest
+            target: --win
+          - os: ubuntu-latest
+            target: --linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tests
+        run: npm test
+        # Windows hasn't been verified yet (docs/testing.md); make this blocking once it's green.
+        continue-on-error: ${{ matrix.os == 'windows-latest' }}
+      - name: Build and upload to the draft release
+        run: npx electron-builder ${{ matrix.target }} --publish always
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AudioConverter</title>
+  <link rel="stylesheet" href="shared/styles/index.css">
+  <link rel="stylesheet" href="camelot/camelot.css">
+  <link rel="stylesheet" href="analyzer/analyzer.css">
+  <link rel="stylesheet" href="settings/settings.css">
+</head>
+<body>
+  <nav class="rail" aria-label="Main">
+    <span class="logo" role="img" aria-label="AudioConverter logo"></span>
+    <button class="rail-item" data-nav="converter" title="Audio converter" aria-label="Audio converter" aria-current="page"><span class="glyph glyph-folder"></span></button>
+    <button class="rail-item" data-nav="analyzer" title="Audio analyzer" aria-label="Audio analyzer"><span class="glyph glyph-wave"></span></button>
+    <button class="rail-item" data-nav="camelot" title="Camelot wheel" aria-label="Camelot wheel"><span class="glyph glyph-wheel"></span></button>
+    <button class="rail-item rail-end" data-nav="settings" title="Settings" aria-label="Settings"><span class="glyph glyph-cog"></span></button>
+    <button class="rail-item" data-nav="contact" title="Contact us" aria-label="Contact us"><span class="glyph glyph-mail"></span></button>
+  </nav>
+
+  <div class="view" data-view="converter">
+    <main class="shell">
+      <header class="top">
+        <div class="brand">
+          <h1>Audio converter</h1>
+          <p class="sub">Copies your track library to AIFF for older CDJ models, with folders, tags and artwork · <span class="nowrap">44.1/48 kHz · 16/24-bit</span></p>
+        </div>
+      </header>
+
+      <div class="callout bad ffmpeg-missing" id="ffmpeg-missing" hidden>
+        <span><strong>ffmpeg wasn't found,</strong> so nothing can be converted.</span>
+        <button class="btn" id="ffmpeg-missing-open">Fix in Settings</button>
+      </div>
+
+      <section class="card">
+        <h2>Folders</h2>
+        <div class="folder-row">
+          <span class="folder-label">Library</span>
+          <code class="path" id="input-path"></code>
+          <button class="btn ghost" data-pick="input">Choose…</button>
+          <button class="btn ghost icon" data-open="input" title="Open in file browser" aria-label="Open library folder">↗</button>
+        </div>
+        <div class="folder-row">
+          <span class="folder-label">Output</span>
+          <code class="path" id="output-path"></code>
+          <button class="btn ghost" data-pick="output">Choose…</button>
+          <button class="btn ghost icon" data-open="output" title="Open in file browser" aria-label="Open output folder">↗</button>
+        </div>
+      </section>
+
+      <section class="card span-2">
+        <h2>Convert from</h2>
+        <div class="toggles" id="formats"></div>
+      </section>
+
+      <section class="card span-2">
+        <h2>Options</h2>
+        <label class="switch">
+          <input type="checkbox" id="safe-names">
+          <span>FAT32 / Windows-safe file names</span>
+        </label>
+        <label class="stepper">
+          <span>Parallel conversions</span>
+          <input type="number" id="workers" min="1" max="16" step="1">
+        </label>
+      </section>
+
+      <section class="card">
+        <div class="stats-head">
+          <h2>Library</h2>
+          <span class="muted" id="last-run">Never converted</span>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="num" id="stat-total">—</span><span class="lbl" id="stat-total-label">tracks</span></div>
+          <div class="stat"><span class="num" id="stat-done">—</span><span class="lbl">up to date</span></div>
+          <div class="stat"><span class="num" id="stat-pending">—</span><span class="lbl">new / changed</span></div>
+          <div class="stat"><span class="num" id="stat-failed">—</span><span class="lbl">failed last run</span></div>
+        </div>
+        <p class="detail muted" id="stat-detail"></p>
+        <div id="warnings"></div>
+        <div id="failures"></div>
+      </section>
+
+      <section class="card" id="playlist-card">
+        <div class="card-head">
+          <h2>Playlist</h2>
+          <span class="muted" id="pl-summary"></span>
+        </div>
+        <div class="folder-row">
+          <span class="folder-label">Playlist</span>
+          <code class="path" id="pl-path"></code>
+          <button class="btn ghost" id="pl-pick">Choose…</button>
+          <button class="btn ghost icon" id="pl-open" title="Show in file browser" aria-label="Show playlist file">↗</button>
+        </div>
+        <div class="folder-row">
+          <span class="folder-label">Converted</span>
+          <code class="path" id="pl-root"></code>
+          <button class="btn ghost" id="pl-root-pick">Choose…</button>
+          <button class="btn ghost icon" id="pl-root-open" title="Open in file browser" aria-label="Open converted folder">↗</button>
+        </div>
+        <div class="pl-controls">
+          <label class="switch">
+            <input type="checkbox" id="pl-custom-root">
+            <span>Use a different converted folder</span>
+          </label>
+          <button class="btn" id="pl-match">Convert playlist</button>
+        </div>
+        <p class="pl-status" id="pl-status" hidden></p>
+        <div class="pl-find" id="pl-find" hidden>
+          <div class="pl-find-row">
+            <button class="btn secondary with-glyph" id="pl-find-btn"><span class="glyph glyph-folder"></span><span id="pl-find-label">Find in folder</span></button>
+            <button class="btn danger" id="pl-find-cancel" hidden>Cancel</button>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="pl-recursive">
+            <span>Recursive</span>
+          </label>
+          <p class="hint">Also checks every folder inside the one you choose. Pick a folder near your music, not a whole drive.</p>
+        </div>
+        <div class="pl-table" id="pl-table" hidden>
+          <div class="pl-row pl-head"><span>#</span><span>Original playlist</span><span>Converted playlist</span><span></span></div>
+          <div class="pl-rows" id="pl-rows"></div>
+        </div>
+        <div class="pl-save" id="pl-save" hidden>
+          <label class="pl-prefix">
+            <span>Name prefix</span>
+            <input type="text" id="pl-prefix" maxlength="40" spellcheck="false">
+          </label>
+          <span class="pl-save-name" id="pl-save-name"></span>
+          <button class="btn primary" id="pl-save-btn">Create playlist</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="bar">
+      <div class="progress-wrap">
+        <div class="progress" id="progress" hidden><div class="fill" id="progress-fill"></div></div>
+        <p class="status" id="status">Choose a library and an output folder to begin.</p>
+        <p class="status muted small" id="status-sub"></p>
+      </div>
+      <div class="actions">
+        <button class="btn" id="scan-btn" disabled>Scan</button>
+        <button class="btn primary" id="convert-btn" disabled>Convert</button>
+        <button class="btn danger" id="cancel-btn" hidden>Cancel</button>
+      </div>
+    </footer>
+  </div>
+
+  <div class="view" data-view="analyzer" hidden>
+    <main class="shell">
+      <header class="top">
+        <div class="brand">
+          <h1>Audio analyzer</h1>
+          <p class="sub">Drop a track to check it's really lossless, not an MP3 in disguise, and to see its tempo and key.</p>
+        </div>
+        <button class="btn" id="an-compare" aria-pressed="false">Compare two tracks</button>
+      </header>
+
+      <section class="card an-slot" data-slot="a" aria-label="Track A"></section>
+      <section class="card an-slot" data-slot="b" aria-label="Track B" hidden></section>
+
+      <section class="card an-spectrum" id="an-spectrum" hidden>
+        <div class="card-head">
+          <h2 id="an-spectrum-title">Average spectrum</h2>
+          <span class="muted small">Level at each frequency, averaged over the whole track</span>
+        </div>
+        <div class="an-legend" id="an-legend"></div>
+        <div class="an-chart" id="an-chart"></div>
+      </section>
+
+      <section class="card an-help">
+        <h2>How to read it</h2>
+        <ul>
+          <li><strong>Brightness is loudness.</strong> Height is frequency (low at the bottom), left to right is time.</li>
+          <li><strong>Real lossless</strong> (a proper FLAC, WAV or AIFF from a CD or a lossless download) has sound up to about 20–22 kHz.</li>
+          <li><strong>A hard horizontal edge with black above it</strong> means an MP3 or AAC was in the chain: the encoder throws away everything above a set frequency. About 16–17 kHz is a 128 kbps MP3, about 18.5 kHz 192 kbps, about 20 kHz 256–320 kbps. Converting that MP3 to FLAC afterwards can't bring the top back.</li>
+          <li><strong>Limits:</strong> some high-bitrate MP3s (V0) and AACs don't leave a hard edge, so a few fakes pass as real; and some CD masters are filtered near 20 kHz, so that range is only ever "possibly".</li>
+          <li><strong>Hi-res</strong> (88.2 kHz and up) is a separate question: turn on <em>Settings → Audio Analyzer → Also check hi-res claims</em> to have it checked too.</li>
+          <li><strong>Tempo and key</strong> come from the whole track. The BPM matched rekordbox's within 0.1 for about 8 tracks in 10 in a test on a techno library. The key is an <em>estimate</em>: it agreed with rekordbox about half the time, and "no clear key" means the track gives too little to go on. <em>Use on Camelot wheel</em> takes both to the deck.</li>
+          <li><strong>Compare</strong> two copies of the same track, e.g. a store download and a rip, to see which one holds more. Their spectrograms share one frequency scale.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <template id="an-slot-tpl">
+    <div class="an-head">
+      <h2 class="an-label"></h2>
+      <span class="an-name"></span>
+      <div class="an-actions">
+        <button class="btn ghost an-pick">Choose…</button>
+        <button class="btn ghost an-clear" hidden>Remove</button>
+      </div>
+    </div>
+    <div class="an-drop">
+      <span class="glyph glyph-wave"></span>
+      <p class="an-drop-title">Drop a track here</p>
+      <p class="an-drop-sub">FLAC, WAV, AIFF, MP3 and more. Drop two at once to compare them.</p>
+      <div class="an-progress" hidden>
+        <div class="progress"><div class="fill"></div></div>
+        <p class="an-progress-text"></p>
+      </div>
+    </div>
+    <p class="callout bad an-error" hidden></p>
+    <div class="an-result" hidden>
+      <div class="an-facts"></div>
+      <div class="callout an-verdict"><strong class="an-verdict-title"></strong><ul class="an-notes"></ul></div>
+      <div class="an-tk" aria-live="polite">
+        <p class="an-tk-busy">Working out tempo and key…</p>
+        <p class="callout bad an-tk-error" hidden></p>
+        <div class="an-tk-stats" hidden>
+          <div class="an-tk-stat">
+            <span class="an-tk-label">Tempo</span>
+            <span class="an-tk-big"><span class="an-bpm"></span> <small>BPM</small></span>
+            <span class="an-tk-note an-bpm-note"></span>
+          </div>
+          <div class="an-tk-stat">
+            <span class="an-tk-label">Key estimate</span>
+            <span class="an-tk-keyrow"><span class="an-key-chip"></span><span class="an-key-name"></span></span>
+            <span class="an-tk-note an-key-note"></span>
+          </div>
+          <div class="an-tk-stat">
+            <span class="an-tk-label">Tuning</span>
+            <span class="an-tk-big an-tuning"></span>
+            <span class="an-tk-note an-tuning-note"></span>
+          </div>
+          <button class="btn an-use"></button>
+        </div>
+      </div>
+      <div class="an-plot">
+        <div class="an-yaxis" aria-hidden="true"></div>
+        <div class="an-canvas-wrap">
+          <canvas class="an-canvas" role="img"></canvas>
+          <div class="an-line an-nyq" hidden><span></span></div>
+          <div class="an-line an-cutoff" hidden><span></span></div>
+          <div class="an-tip" hidden></div>
+        </div>
+        <span class="an-unit" aria-hidden="true">kHz</span>
+        <div class="an-xaxis" aria-hidden="true"></div>
+      </div>
+      <div class="an-scale" aria-hidden="true"><span>−140 dB</span><i></i><span>−20 dB</span></div>
+    </div>
+  </template>
+
+  <div class="view" data-view="camelot" hidden>
+    <main class="shell cam-shell">
+      <header class="top">
+        <div class="brand">
+          <h1>Camelot wheel</h1>
+          <p class="sub">With Master Tempo off, the tempo fader moves the key too. See where the track lands and what it mixes with.</p>
+        </div>
+        <button class="btn primary with-glyph" id="cam-listen-btn"><span class="glyph glyph-mic"></span><span id="cam-listen-label">Listen</span></button>
+      </header>
+
+      <section class="card cam-listen" id="cam-listen" aria-label="Listen" hidden>
+        <div class="card-head">
+          <h2>Listen</h2>
+          <div class="cam-listen-tools">
+            <label class="cam-listen-input"><span class="cam-label">Input</span><select id="cam-listen-device"><option value="">Default input</option></select></label>
+            <button class="btn ghost icon" id="cam-listen-close" title="Hide" aria-label="Hide Listen">×</button>
+          </div>
+        </div>
+        <div class="cam-listen-body">
+          <div class="cam-listen-scope">
+            <canvas id="cam-listen-canvas" role="img" aria-label="Live spectrogram of the input"></canvas>
+            <div class="cam-listen-overlay" id="cam-listen-overlay" hidden>
+              <span class="cam-listen-count" id="cam-listen-count"></span>
+              <span id="cam-listen-state"></span>
+              <span class="cam-listen-level" aria-hidden="true"><i id="cam-listen-meter"></i></span>
+              <span class="cam-listen-quiet" id="cam-listen-quiet" hidden>Hardly any sound is coming in</span>
+            </div>
+            <div class="cam-listen-axis" aria-hidden="true"><span>12k</span><span>1k</span><span>100 Hz</span></div>
+          </div>
+          <div class="cam-listen-result" id="cam-listen-result" hidden>
+            <div class="cam-listen-stats">
+              <div class="cam-listen-stat">
+                <span class="cam-label">Tempo</span>
+                <span class="cam-listen-big"><span id="cam-l-bpm"></span> <small>BPM</small></span>
+                <span class="cam-listen-note"><span id="cam-l-bpm-note"></span>
+                  <button class="link" id="cam-l-half" title="Half the tempo">½×</button>
+                  <button class="link" id="cam-l-double" title="Double the tempo">2×</button></span>
+              </div>
+              <div class="cam-listen-stat">
+                <span class="cam-label">Key estimate</span>
+                <span class="cam-listen-keyrow"><span class="cam-chip" id="cam-l-key"></span><span id="cam-l-key-name"></span></span>
+                <span class="cam-listen-note" id="cam-l-key-note"></span>
+              </div>
+              <div class="cam-listen-stat">
+                <span class="cam-label">Tuning</span>
+                <span class="cam-listen-big" id="cam-l-tuning"></span>
+                <span class="cam-listen-note" id="cam-l-tuning-note"></span>
+              </div>
+            </div>
+            <div class="cam-chroma" id="cam-l-chroma" role="img" aria-label="Pitch classes heard"></div>
+            <p class="callout warn" id="cam-l-warn" hidden></p>
+            <div class="cam-listen-actions">
+              <button class="btn primary" id="cam-l-use"></button>
+              <button class="btn" id="cam-l-use-key" hidden></button>
+              <span class="muted small" id="cam-l-used" hidden>Deck updated · fader at 0 %</span>
+            </div>
+          </div>
+          <p class="callout bad" id="cam-listen-error" hidden></p>
+        </div>
+        <p class="cam-hint">Listens for 10 seconds (Stop ends early). The sound is analysed on this computer and never saved. A line-in from your mixer works best; a laptop mic works if the track is loud.</p>
+      </section>
+
+      <section class="card span-2 row-2 cam-deck" aria-label="Deck">
+        <h2>Deck</h2>
+        <div class="cam-lcd" aria-live="polite">
+          <div class="cam-lcd-row"><span>TEMPO</span><span id="cam-lcd-range"></span></div>
+          <div class="cam-lcd-row"><span class="cam-lcd-pct" id="cam-lcd-pct"></span><span id="cam-lcd-mt"></span></div>
+          <div class="cam-lcd-row"><span class="cam-lcd-keys" id="cam-lcd-keys"></span><span id="cam-lcd-bpm"></span></div>
+        </div>
+        <div class="cam-two">
+          <label class="cam-field"><span class="cam-label">Track key</span><select id="cam-key"></select></label>
+          <label class="cam-field"><span class="cam-label">Track BPM</span><input id="cam-bpm" type="number" step="0.1"></label>
+        </div>
+        <div class="cam-field">
+          <span class="cam-label" id="cam-range-label">Tempo range</span>
+          <div class="cam-ranges" id="cam-ranges" role="group" aria-labelledby="cam-range-label"></div>
+        </div>
+        <label class="toggle cam-mt"><input type="checkbox" id="cam-mt"><span>Master Tempo</span></label>
+        <div class="cam-faderbay">
+          <div class="cam-scale" id="cam-scale-l" aria-hidden="true"></div>
+          <div class="cam-fader" id="cam-fader" role="slider" tabindex="0" aria-label="Tempo fader" aria-orientation="vertical">
+            <div class="cam-ticks" id="cam-ticks"></div>
+            <div class="cam-track"></div>
+            <div class="cam-detent"></div>
+            <div class="cam-fill" id="cam-fill"></div>
+            <div class="cam-cap" id="cam-cap"></div>
+          </div>
+          <div class="cam-scale right" id="cam-scale-r" aria-hidden="true"></div>
+        </div>
+        <p class="cam-hint">Minus at the top, plus at the bottom, like a CDJ. Double-click the fader to reset.</p>
+        <div class="cam-nudge">
+          <button class="btn" id="cam-minus" aria-label="Decrease tempo one step">−</button>
+          <button class="btn" id="cam-plus" aria-label="Increase tempo one step">+</button>
+          <button class="btn" id="cam-reset">Tempo reset</button>
+        </div>
+        <label class="cam-field"><span class="cam-label">Exact tempo %</span><input id="cam-pct" type="number"></label>
+      </section>
+
+      <section class="card span-2 cam-wheel-card" aria-label="Camelot wheel">
+        <h2>Wheel</h2>
+        <svg class="cam-wheel" id="cam-wheel" viewBox="-215 -215 430 430" role="group" aria-label="Camelot wheel: pick the track key"></svg>
+        <div class="cam-legend">
+          <span><b class="orig"></b>Original key</span>
+          <span><b class="res"></b>Pitched key</span>
+          <span><b class="compat"></b>Mixes with it</span>
+          <span id="cam-legend-target" hidden><b class="target"></b>Target</span>
+        </div>
+        <p class="cam-hint">Click a key to make it the track key. To set a target, click a key under Mixes harmonically with or in the mixing chart.</p>
+      </section>
+
+      <section class="card span-2 cam-result" aria-label="Result">
+        <h2>Result</h2>
+        <div class="cam-fromto">
+          <span class="cam-chip ghost" id="cam-from"></span>
+          <span class="cam-arrow" aria-hidden="true">→</span>
+          <span class="cam-chip" id="cam-to"></span>
+        </div>
+        <p class="cam-names" id="cam-names"></p>
+        <div class="cam-target" id="cam-target" hidden>
+          <p class="callout" id="cam-target-relation"></p>
+          <div class="cam-reach">
+            <span class="cam-label">Pitch the track there</span>
+            <div class="cam-reach-options" id="cam-reach"></div>
+          </div>
+          <div class="cam-target-actions">
+            <button class="btn" id="cam-target-make"></button>
+            <button class="btn ghost" id="cam-target-clear">Clear target</button>
+          </div>
+        </div>
+        <p class="callout cam-status" id="cam-status"></p>
+        <dl class="cam-stats">
+          <dt>Tempo change</dt><dd id="cam-s-pct"></dd>
+          <dt>Pitch change</dt><dd id="cam-s-st"></dd>
+          <dt>Nearest key shift</dt><dd id="cam-s-near"></dd>
+          <dt>Detune from that key</dt><dd id="cam-s-cents"></dd>
+          <dt>Steps on the wheel</dt><dd id="cam-s-steps"></dd>
+          <dt>BPM</dt><dd id="cam-s-bpm"></dd>
+        </dl>
+        <div class="cam-meter">
+          <span class="cam-label">Tuning · cents off the nearest key</span>
+          <div class="cam-meterbar"><div class="cam-mid"></div><div class="cam-needle" id="cam-needle"></div></div>
+          <div class="cam-meterscale"><span>−50</span><span>−25</span><span>0</span><span>+25</span><span>+50</span></div>
+        </div>
+      </section>
+
+      <section class="card cam-ruler" aria-label="Pitch ruler">
+        <div class="card-head">
+          <h2>Pitch ruler · semitones from the original root</h2>
+          <span class="muted small">Dashed line: original root. Red marker: where the pitch sits now.</span>
+        </div>
+        <div class="cam-ruler-scroll"><div class="cam-piano" id="cam-piano"></div></div>
+      </section>
+
+      <section class="card span-2 row-2 cam-mix" aria-label="Mixing">
+        <h2>Mixes harmonically with</h2>
+        <div class="cam-chips" id="cam-compat"></div>
+        <h2 class="cam-chart-title" id="cam-chart-title">Mixing chart</h2>
+        <div class="cam-chart" id="cam-chart"></div>
+        <p class="cam-hint">Keys with a dashed border change the key by a semitone or two. Click a key to set it as the target: Result shows how your track gets there.</p>
+      </section>
+
+      <section class="card span-2 cam-landings" aria-label="Exact key landings">
+        <h2>Exact key landings in this range</h2>
+        <p class="cam-hint">These fader settings move the track by a whole number of semitones, so it lands cleanly in a new key. Click a row to jump the fader there.</p>
+        <div class="cam-table">
+          <table>
+            <thead><tr><th>Fader</th><th title="Semitones">Shift</th><th>Key</th><th>BPM</th></tr></thead>
+            <tbody id="cam-landings"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card span-2 cam-notes" aria-label="How the maths works">
+        <h2>How the maths works</h2>
+        <ul>
+          <li>Pitch change in semitones = <code>12 × log2(1 + tempo% / 100)</code>. So <code>+6%</code> ≈ <code>+1.01</code> semitones and <code>−6%</code> ≈ <code>−1.07</code>.</li>
+          <li>One semitone up moves you <strong>7 steps clockwise</strong> on the Camelot wheel (1A → 8A). One semitone down moves 7 steps the other way (1A → 6A). Letters A/B never change.</li>
+          <li>Two semitones up is <strong>+2 on the wheel</strong> (1A → 3A). That's why a +2 key change sounds like an energy boost.</li>
+          <li>About <strong>±3%</strong> is half a semitone: the track sits between two keys and clashes with both. Small moves of ±1–2% only detune it slightly.</li>
+          <li><strong>Master Tempo</strong> (key lock) keeps the original key whatever the tempo. Turn it off and the key moves as shown here.</li>
+          <li>Detune guide: within 10 cents counts as in key. 10–25 cents is slightly off and often fine on drum-heavy parts. Over 25 cents is noticeably out of tune.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <div class="view" data-view="settings" hidden>
+    <main class="shell">
+      <header class="top"><div class="brand"><h1>Settings</h1><p class="sub">Changes are saved straight away.</p></div></header>
+      <div class="settings">
+        <div class="settings" id="settings-sections"></div>
+        <section class="card settings-section" aria-label="ffmpeg">
+          <h2>ffmpeg</h2>
+          <div class="setting">
+            <span class="setting-text">
+              <span class="setting-label">Converter and decoder <span class="chip" id="ffmpeg-chip">ffmpeg …</span></span>
+              <span class="setting-hint" id="ffmpeg-hint"></span>
+              <span class="setting-hint setting-error" id="ffmpeg-error" role="alert" hidden></span>
+            </span>
+            <span class="setting-actions">
+              <button class="btn ghost" id="ffmpeg-reset" hidden>Find automatically</button>
+              <button class="btn ghost" id="ffmpeg-recheck">Check again</button>
+              <button class="btn" id="ffmpeg-pick">Choose…</button>
+            </span>
+          </div>
+          <div class="setting">
+            <span class="setting-text">
+              <span class="setting-label">Download ffmpeg</span>
+              <span class="setting-hint" id="ffmpeg-download-hint"></span>
+            </span>
+            <button class="btn" id="ffmpeg-download">Download…</button>
+          </div>
+        </section>
+        <section class="card settings-section" aria-label="About">
+          <h2>About</h2>
+          <div class="setting">
+            <span class="setting-text">
+              <span class="setting-label">AudioConverter <span id="about-version"></span><span class="update-dot" id="about-dot" title="Update available" hidden></span></span>
+              <span class="setting-hint" id="about-status"></span>
+            </span>
+            <span class="setting-actions">
+              <button class="btn ghost" id="about-check">Check now</button>
+              <button class="btn primary" id="about-update" hidden></button>
+            </span>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="view" data-view="contact" hidden>
+    <main class="shell">
+      <header class="top"><div class="brand"><h1>Contact us</h1><p class="sub">Questions, bugs, ideas</p></div></header>
+      <section class="card empty contact">
+        <span class="glyph glyph-mail"></span>
+        <p>Email us at</p>
+        <p class="contact-email">hello@averyano.com</p>
+        <button class="btn" id="contact-email">Open in your email app</button>
+        <p class="contact-note" id="contact-note" hidden>No email app opened. Copy the address above instead.</p>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="dialog" id="update-dialog" aria-labelledby="update-title">
+    <h2 class="dialog-title" id="update-title">Update available</h2>
+    <p class="dialog-sub" id="update-sub"></p>
+    <p class="dialog-meta" id="update-ago"></p>
+    <ul class="dialog-notes" id="update-notes"></ul>
+    <p class="dialog-meta" id="update-more" hidden></p>
+    <div class="dialog-actions">
+      <button class="btn" id="update-later">Download later</button>
+      <button class="btn primary" id="update-now">Download now</button>
+    </div>
+  </dialog>
+
+  <dialog class="dialog" id="ffmpeg-dialog" aria-labelledby="ffmpeg-dialog-title">
+    <h2 class="dialog-title" id="ffmpeg-dialog-title">ffmpeg is needed</h2>
+    <p class="dialog-sub">AudioConverter uses ffmpeg, a free audio tool, to convert and decode tracks. It isn't on this computer, or the app couldn't find it.</p>
+    <p class="dialog-tip" id="ffmpeg-dialog-tip"></p>
+    <p class="setting-hint setting-error" id="ffmpeg-dialog-error" role="alert" hidden></p>
+    <div class="dialog-actions">
+      <button class="btn ghost" id="ffmpeg-dialog-close">Not now</button>
+      <span class="spacer"></span>
+      <button class="btn" id="ffmpeg-dialog-recheck">Check again</button>
+      <button class="btn" id="ffmpeg-dialog-pick">Choose…</button>
+      <button class="btn primary" id="ffmpeg-dialog-download">Download ffmpeg</button>
+    </div>
+  </dialog>
+
+  <div class="app-error callout bad" id="app-error" role="alert" hidden>
+    <span><strong>Something went wrong.</strong> <span id="app-error-text"></span> The app keeps working; if this happens again, please report it.</span>
+    <button class="btn ghost icon" id="app-error-close" title="Dismiss" aria-label="Dismiss">×</button>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

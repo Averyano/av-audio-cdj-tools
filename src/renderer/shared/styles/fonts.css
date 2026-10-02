@@ -1,0 +1,36 @@
+/* Bundled fonts. Imported at the top of index.css; paths are relative to this file.
+   Geist (OFL, see ../fonts/Geist/OFL.txt) — static weights the UI uses:
+   300 light · 400 body · 600 buttons/labels · 700 headings.
+   Need another weight? Add a block pointing at ../fonts/Geist/static/Geist-<Weight>.ttf. */
+
+@font-face {
+  font-family: 'Geist';
+  src: url('../fonts/Geist/static/Geist-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Geist';
+  src: url('../fonts/Geist/static/Geist-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Geist';
+  src: url('../fonts/Geist/static/Geist-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Geist';
+  src: url('../fonts/Geist/static/Geist-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}

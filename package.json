@@ -1,0 +1,116 @@
+{
+  "name": "audioconverter",
+  "productName": "AudioConverter",
+  "version": "1.0.0",
+  "description": "Mirror a FLAC/WAV/ALAC library into CDJ-compatible AIFF (Pioneer CDJ-2000NXS and older), with an audio analyzer and a Camelot wheel.",
+  "author": "Averyano",
+  "license": "MIT",
+  "keywords": [
+    "cdj",
+    "cdj-2000nxs",
+    "pioneer-dj",
+    "rekordbox",
+    "flac",
+    "alac",
+    "aiff",
+    "wav",
+    "flac-to-aiff",
+    "audio-converter",
+    "dj",
+    "camelot",
+    "ffmpeg",
+    "electron"
+  ],
+  "homepage": "https://github.com/Averyano/av-audio-cdj-tools",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Averyano/av-audio-cdj-tools.git"
+  },
+  "type": "module",
+  "main": "src/main/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "cli": "node src/cli.js",
+    "test": "node --test",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "dependencies": {
+    "music-metadata": "^11.16.1"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "ffmpeg-static": "^5.3.0"
+  },
+  "allowScripts": {
+    "ffmpeg-static@5.3.0": true,
+    "electron@44.4.5": true
+  },
+  "build": {
+    "appId": "app.audioconverter.cdj",
+    "productName": "AudioConverter",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "publish": [
+      {
+        "provider": "github",
+        "releaseType": "draft"
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.music",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "AudioConverter listens to a track for a few seconds to detect its tempo and key. The sound stays on this computer and isn’t recorded."
+      }
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Audio"
+    }
+  }
+}

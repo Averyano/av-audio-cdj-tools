@@ -1,0 +1,11 @@
+/* Settings view (ui.md → Settings). Drawn from engine/prefs.js by settings/view.js. */
+.settings { display: flex; flex-direction: column; gap: 14px; }
+.settings-section h2 { margin: 0 0 4px; }
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 12px 0; cursor: pointer; }
+.setting + .setting { border-top: 1px solid var(--line); }
+.setting-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.setting-label { font-weight: 600; }
+.setting-hint { font-size: 12px; color: var(--muted); max-width: 70ch; }
+.setting-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.setting-label .chip { margin-left: 8px; vertical-align: 1px; }
+.setting-error { color: var(--danger-text); }
